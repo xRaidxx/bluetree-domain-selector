@@ -4,7 +4,7 @@
 
 **Vite + React + Supabase, deployed to Vercel.**
 
-- **Vite + React**: this is a single-user internal tool, not a marketing site. SSR buys nothing. Vite gives sub-second HMR and ships a tiny production bundle. React was picked over Svelte/Solid only because it makes onboarding the next dev trivial.
+- **Vite + React**: this is a single-user internal tool, not a marketing site. Server-Side Rendering buys nothing. Vite gives sub-second Hot Module Replacement and ships a tiny production bundle.
 - **Supabase (Postgres)**: the spec says the reasoning config must live in a database with versioning, editable without a code change. Postgres gives me proper schemas (`jsonb` for `target_pages` and `disqualifiers`, `numeric` for caps), and Supabase ships the admin table editor + browser-safe client for free. No server-side glue code to maintain.
 - **No backend service**: scoring is a pure JS function that runs in the browser against the inventory loaded from Supabase. 1k rows × 7 dimensions scores in ~50ms. Putting it server-side would only add latency and a deploy target without changing the answer.
 - **Vercel**: zero-config for Vite + auto-deploy from GitHub. The whole tool is browser → Supabase, so there's no server to host elsewhere.
