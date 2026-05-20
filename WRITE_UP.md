@@ -6,10 +6,8 @@
 
 - **Vite + React**: this is a single-user internal tool, not a marketing site. Server-Side Rendering buys nothing. Vite gives sub-second Hot Module Replacement and ships a tiny production bundle.
 - **Supabase (Postgres)**: the spec says the reasoning config must live in a database with versioning, editable without a code change. Postgres gives me proper schemas (`jsonb` for `target_pages` and `disqualifiers`, `numeric` for caps), and Supabase ships the admin table editor + browser-safe client for free. No server-side glue code to maintain.
-- **No backend service**: scoring is a pure JS function that runs in the browser against the inventory loaded from Supabase. 1k rows × 7 dimensions scores in ~50ms. Putting it server-side would only add latency and a deploy target without changing the answer.
-- **Vercel**: zero-config for Vite + auto-deploy from GitHub. The whole tool is browser → Supabase, so there's no server to host elsewhere.
-
-The tradeoff I accepted: the anon key is in the browser. That's fine for a single-user internal tool behind RLS — but if this ever opened to multiple clients, the inventory query would need to move server-side.
+- **Vercel serverless API routes**: all database access goes through `/api` functions that run server-side using the service role key. The browser never touches Supabase directly — satisfying spec requirement #7 (API keys server-side only). Scoring itself still runs in the browser against the payload returned by the API, so the ~50ms scoring time is unchanged.
+- **Vercel**: zero-config for Vite + auto-deploy from GitHub. The `/api` directory is picked up automatically as serverless functions — no separate backend to deploy or maintain.
 
 ## UX decisions I'm proudest of
 
@@ -26,13 +24,13 @@ The tradeoff I accepted: the anon key is in the browser. That's fine for a singl
 - **LLM-based niche reasoning.** The framework mentions it as optional and the spec asks for prompts to be stored, not invoked. The `niche_prompt` field is stored on each scoring profile and there's a niche-prompt editor in Admin — wiring up the actual call (OpenAI / Claude with the stored prompt against domain niche text) is a single function away, but it would have meant adding a server route for the API key. Out of scope for the deterministic v1.
 - **Per-row "Why was this disqualified?" expanded explanations.** The disqualified tab shows the reason string from the engine (e.g. *"Nofollow only — client requires dofollow"*), which is enough. A future audit modal could show the full breakdown of how close the domain came to qualifying.
 - **Web Worker for scoring.** 1k rows is fast enough on the main thread that the progress bar feels honest. If the inventory grows past ~10k rows this needs to move to a Worker.
-- **Auth.** Spec says single-user, no auth needed. Anon key + open RLS is the right call for the brief — adding Supabase auth would be 30 minutes of yak-shaving for zero spec value.
+- **Auth.** Spec says single-user, no auth needed. The service role key lives only on Vercel's servers — adding Supabase auth would be 30 minutes of yak-shaving for zero spec value.
 
 ## What I'd change with more time
 
 - **A "compare two campaigns" view.** Same client, two scoring configs side by side, see which domains move in and out of the shortlist. This is the real test of a config change.
 - **Domain inventory health page.** A read-only dashboard at `/inventory` showing distribution of DR / traffic / price / niche tags. Right now you import a CSV and have to trust it — a quick chart would catch a bad import immediately.
-- **Move the anon-key inventory query to a Supabase Edge Function.** Stays serverless, but the inventory stops being browser-readable. Worth doing before this tool sees a second tenant.
+- **Move scoring to a Vercel API route.** Scoring currently runs in the browser against the domain payload returned by `/api/domains`. For very large inventories (10k+ rows) this could be slow — moving it server-side would eliminate the payload transfer entirely.
 - **Per-rule disqualifier preview.** When you add a rule like `tat contains "8 weeks"` in Admin, show "this would disqualify N additional domains in the current inventory" inline. Right now the only way to find out is to run a campaign.
 - **Sticky filter chips above the table.** The per-column filters work but they're tucked into the table head. A row of removable chips above the totals bar would make the filter state more obvious.
 - **A real Storybook of edge cases.** The sanity check covers the framework's worked example, but a fuller suite — empty niche, all disqualified, single-rule pathological cases — would let me refactor the scoring engine fearlessly.

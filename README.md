@@ -11,19 +11,23 @@ The scoring framework lives in Supabase, not in code — weights, disqualifier r
 ```bash
 npm install
 cp .env.example .env       # then fill in your Supabase values
-npm run dev
+npx vercel dev
 ```
 
-Open <http://localhost:5173>.
+Open <http://localhost:3000>.
+
+> `vercel dev` runs both the Vite frontend and the `/api` serverless functions together locally. Plain `npm run dev` (Vite only) will load the UI but all database calls will fail since the API routes won't be running.
 
 ### Environment variables
 
 `.env` (gitignored — never commit it):
 
 ```
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 ```
+
+All database access goes through Vercel serverless functions (`/api/*`) that run server-side. No Supabase credentials are ever sent to the browser.
 
 ---
 
@@ -79,8 +83,8 @@ Campaigns store `scoring_config_id` so historical results remain traceable to th
 1. Push to GitHub.
 2. Connect the repo at <https://vercel.com/new> — Vite is auto-detected.
 3. Add environment variables in **Settings → Environment Variables**:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 4. Every push to `main` auto-deploys.
 
 ---
