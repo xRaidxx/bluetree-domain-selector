@@ -19,7 +19,7 @@ The tradeoff I accepted: the anon key is in the browser. That's fine for a singl
 
 3. **Versioned config with a real diff view.** Every save to `/admin` writes a new row with `is_active = true` and demotes the prior. The version history table has a **Details** button that shows every field side-by-side with the prior version — changes highlighted in blue. Rollback is one click. Combined with `campaigns.scoring_config_id`, you can always answer "what config produced this campaign?"
 
-4. **Mid-job recovery.** The new campaign form persists to `localStorage` on every keystroke. If the user refreshes during a long scoring run, the form repopulates and shows a "📝 Restored draft" banner with a "Start fresh" escape. Small detail, but the spec explicitly calls out mid-job error handling as a thing they look for.
+4. **Smart CSV import with staged confirmation.** The importer auto-detects the header row (skipping any preamble rows), maps known column names regardless of casing or spacing, and separates columns into mapped, unmapped, and missing-recommended buckets — so the user knows exactly what was recognised and what was skipped before a single row hits the database. A staged confirm step shows the row count and warns if recommended scoring columns (DR, traffic, price, niche) are absent. Replace-all vs. append mode gives full control over the inventory without touching the database directly.
 
 ## What I cut
 
