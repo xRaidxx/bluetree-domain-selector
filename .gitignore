@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+.env.local
+
+# Claude Code internal files
+.claude/
+
+# Real business data — never commit
+*.csv
+*.xlsx
+*.docx
+
+# Internal planning docs
+BUILD_PLAN.md
