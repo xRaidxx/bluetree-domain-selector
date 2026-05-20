@@ -208,7 +208,7 @@ export default function Results() {
       {/* Header */}
       <div className="mb-16" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <button className="btn btn-secondary btn-sm mb-8" onClick={() => navigate('/')}>← Back</button>
+          <button className="btn btn-primary btn-sm mb-8" onClick={() => navigate('/')}>← Back</button>
           <h1 style={{ fontSize: 18, fontWeight: 700 }}>
             {campaign.client_name}
             {campaign.website && <span className="text-muted text-sm" style={{ fontWeight: 400, marginLeft: 8 }}>{campaign.website}</span>}
@@ -238,7 +238,7 @@ export default function Results() {
       {/* Campaign brief toggle */}
       <div className="mb-12">
         <button
-          className="btn btn-secondary btn-sm"
+          className="btn btn-primary btn-sm"
           onClick={() => setShowBrief(b => !b)}
         >
           {showBrief ? '▲ Hide Brief' : '▼ Campaign Brief'}
