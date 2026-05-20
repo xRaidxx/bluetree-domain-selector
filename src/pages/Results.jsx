@@ -206,7 +206,7 @@ export default function Results() {
   return (
     <main className="page" style={{ maxWidth: 1400 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-16">
+      <div className="mb-16" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <button className="btn btn-secondary btn-sm mb-8" onClick={() => navigate('/')}>← Back</button>
           <h1 style={{ fontSize: 18, fontWeight: 700 }}>
@@ -227,10 +227,10 @@ export default function Results() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-8">
-          <button className="btn btn-primary" onClick={() => navigate(`/campaign/${id}/edit`)}>✏️ Edit Campaign</button>
-          <button className="btn btn-primary" onClick={handleExport} disabled={exporting || selected.size === 0}>
-            {exporting ? 'Exporting…' : `Export ${selected.size} selected`}
+        <div className="flex items-center gap-8" style={{ flexShrink: 0 }}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/campaign/${id}/edit`)}>✏️ Edit</button>
+          <button className="btn btn-primary btn-sm" onClick={handleExport} disabled={exporting || selected.size === 0}>
+            {exporting ? 'Exporting…' : `Export ${selected.size}`}
           </button>
         </div>
       </div>
