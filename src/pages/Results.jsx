@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 import { exportCampaign } from '../lib/export.js'
 
 const DIM_LABELS = {
@@ -88,11 +88,7 @@ export default function Results() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*, scoring_config:scoring_config_id(*)')
-        .eq('id', id)
-        .single()
+      const { data, error } = await api.campaigns.get(id)
       if (error) { setError(error.message); setLoading(false); return }
       setCampaign(data)
       setConfig(data.scoring_config)

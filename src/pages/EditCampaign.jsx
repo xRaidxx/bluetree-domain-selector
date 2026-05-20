@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 import { scoreDomainsAgainstBrief } from '../lib/scoring.js'
 import GeoMultiSelect from '../components/GeoMultiSelect.jsx'
 
@@ -17,10 +17,10 @@ export default function EditCampaign() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from('scoring_config').select('profile_name').order('profile_name').then(({ data }) => {
-      if (data) setProfiles([...new Set(data.map(r => r.profile_name))])
+    api.scoringConfig.profiles().then(({ data }) => {
+      if (data) setProfiles(data)
     })
-    supabase.from('campaigns').select('*').eq('id', id).single().then(({ data, error }) => {
+    api.campaigns.get(id).then(({ data, error }) => {
       if (error || !data) { navigate('/'); return }
       setForm({
         client_name: data.client_name || '',
@@ -105,7 +105,7 @@ export default function EditCampaign() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setSaving(true)
-    const { error } = await supabase.from('campaigns').update(clientInfoPayload()).eq('id', id)
+    const { error } = await api.campaigns.update(id, clientInfoPayload())
     setSaving(false)
     if (error) { setErrors({ _global: error.message }); return }
     navigate(`/campaign/${id}/results`)
@@ -119,23 +119,12 @@ export default function EditCampaign() {
     setProgress(5)
     setStatusMsg('Loading scoring config…')
     try {
-      const { data: configs, error: cfgErr } = await supabase
-        .from('scoring_config').select('*')
-        .eq('profile_name', form.profile).eq('is_active', true)
-        .order('version', { ascending: false }).limit(1)
-      if (cfgErr || !configs?.length) throw new Error('Could not load scoring config.')
-      const config = configs[0]
+      const { data: config, error: cfgErr } = await api.scoringConfig.getActive(form.profile)
+      if (cfgErr || !config) throw new Error('Could not load scoring config.')
 
       setProgress(15); setStatusMsg('Loading domain inventory…')
-      const CHUNK = 1000
-      let allDomains = [], from = 0
-      while (true) {
-        const { data, error } = await supabase.from('domains').select('*').range(from, from + CHUNK - 1)
-        if (error) throw error
-        allDomains = allDomains.concat(data || [])
-        if (!data || data.length < CHUNK) break
-        from += CHUNK
-      }
+      const { data: allDomains, error: domErr } = await api.domains.list()
+      if (domErr) throw new Error(domErr.message)
 
       setProgress(40); setStatusMsg(`Scoring ${allDomains.length} domains…`)
       const brief = {
@@ -152,12 +141,12 @@ export default function EditCampaign() {
 
       setProgress(80); setStatusMsg('Saving…')
       const topN = shortlist.slice(0, form.shortlist_size)
-      const { error: saveErr } = await supabase.from('campaigns').update({
+      const { error: saveErr } = await api.campaigns.update(id, {
         ...clientInfoPayload(),
         results: topN,
         excluded: disqualified,
         scoring_config_id: config.id,
-      }).eq('id', id)
+      })
       if (saveErr) throw saveErr
 
       setProgress(100)

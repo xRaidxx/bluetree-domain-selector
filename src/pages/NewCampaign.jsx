@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 import { scoreDomainsAgainstBrief } from '../lib/scoring.js'
 import GeoMultiSelect from '../components/GeoMultiSelect.jsx'
 
@@ -47,8 +47,8 @@ export default function NewCampaign() {
   })
 
   useEffect(() => {
-    supabase.from('scoring_config').select('profile_name').order('profile_name').then(({ data }) => {
-      if (data) setProfiles([...new Set(data.map(r => r.profile_name))])
+    api.scoringConfig.profiles().then(({ data }) => {
+      if (data) setProfiles(data)
     })
   }, [])
 
@@ -109,35 +109,15 @@ export default function NewCampaign() {
 
     try {
       // Load active config for selected profile
-      const { data: configs, error: cfgErr } = await supabase
-        .from('scoring_config')
-        .select('*')
-        .eq('profile_name', form.profile)
-        .eq('is_active', true)
-        .order('version', { ascending: false })
-        .limit(1)
-
-      if (cfgErr || !configs?.length) throw new Error('Could not load scoring config. Check Supabase.')
-      const config = configs[0]
+      const { data: config, error: cfgErr } = await api.scoringConfig.getActive(form.profile)
+      if (cfgErr || !config) throw new Error('Could not load scoring config. Check Supabase.')
 
       setProgress(15)
       setStatusMsg('Loading domain inventory…')
 
-      // Load all domains in chunks to avoid payload limits
-      const CHUNK = 1000
-      let allDomains = []
-      let from = 0
-      while (true) {
-        const { data, error } = await supabase
-          .from('domains')
-          .select('*')
-          .range(from, from + CHUNK - 1)
-        if (error) throw error
-        allDomains = allDomains.concat(data || [])
-        if (!data || data.length < CHUNK) break
-        from += CHUNK
-        setProgress(15 + Math.round((from / (from + CHUNK)) * 20))
-      }
+      // Load all domains server-side
+      const { data: allDomains, error: domErr } = await api.domains.list()
+      if (domErr) throw new Error(domErr.message)
 
       setProgress(40)
       setStatusMsg(`Scoring ${allDomains.length} domains…`)
@@ -161,9 +141,7 @@ export default function NewCampaign() {
 
       const topN = shortlist.slice(0, form.shortlist_size)
 
-      const { data: saved, error: saveErr } = await supabase
-        .from('campaigns')
-        .insert({
+      const { data: saved, error: saveErr } = await api.campaigns.create({
           client_name: form.client_name,
           website: form.website || null,
           primary_contact: form.primary_contact || null,
@@ -187,8 +165,6 @@ export default function NewCampaign() {
           excluded: disqualified,
           scoring_config_id: config.id,
         })
-        .select('id')
-        .single()
 
       if (saveErr) throw saveErr
       setProgress(100)

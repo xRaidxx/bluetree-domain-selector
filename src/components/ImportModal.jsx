@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 import { parseImportCSV, generateTemplate } from '../lib/csvImport.js'
 
 export default function ImportModal({ onClose }) {
@@ -44,17 +44,12 @@ export default function ImportModal({ onClose }) {
     setImportError(null)
     try {
       if (importMode === 'replace') {
-        const { error } = await supabase.from('domains').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-        if (error) throw error
+        const { error } = await api.domains.deleteAll()
+        if (error) throw new Error(error.message)
       }
-      const CHUNK = 500
-      let inserted = 0
-      for (let i = 0; i < staged.records.length; i += CHUNK) {
-        const { error } = await supabase.from('domains').insert(staged.records.slice(i, i + CHUNK))
-        if (error) throw error
-        inserted += Math.min(CHUNK, staged.records.length - i)
-      }
-      setImportResult({ inserted, unmapped: staged.unmapped, mode: importMode })
+      const { data, error } = await api.domains.insert(staged.records)
+      if (error) throw new Error(error.message)
+      setImportResult({ inserted: data.inserted, unmapped: staged.unmapped, mode: importMode })
       setStaged(null)
     } catch (err) {
       setImportError(err.message)

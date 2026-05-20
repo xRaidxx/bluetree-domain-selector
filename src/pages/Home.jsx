@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 
 function ClientField({ label, value }) {
   return (
@@ -80,7 +80,7 @@ export default function Home() {
 
   async function deleteSelected() {
     if (!window.confirm(`Delete ${selected.size} campaign${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return
-    await supabase.from('campaigns').delete().in('id', [...selected])
+    await api.campaigns.delete([...selected])
     setCampaigns(cs => cs.filter(c => !selected.has(c.id)))
     setSelected(new Set())
   }
@@ -88,17 +88,14 @@ export default function Home() {
   async function deleteSingle(e, id) {
     e.stopPropagation()
     if (!window.confirm('Delete this campaign? This cannot be undone.')) return
-    await supabase.from('campaigns').delete().eq('id', id)
+    await api.campaigns.delete([id])
     setCampaigns(cs => cs.filter(c => c.id !== id))
     setSelected(s => { const n = new Set(s); n.delete(id); return n })
   }
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('id, client_name, website, primary_contact, contact_email, industry, account_manager, campaign_start_date, contract_value, billing_cycle, created_at, link_count_goal, profile, shortlist_size, budget_per_link, client_niche, geo, follow_preference, min_dr, min_traffic, results')
-        .order('created_at', { ascending: false })
+      const { data, error } = await api.campaigns.list()
       if (error) setError(error.message)
       else setCampaigns(data || [])
       setLoading(false)

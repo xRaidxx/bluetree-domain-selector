@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { api } from '../lib/api.js'
 
 const FIELD_LABELS = {
   niche_match_cap: 'Niche Match Cap',
@@ -152,14 +152,10 @@ export default function Admin() {
   const [detailsRow, setDetailsRow] = useState(null)
 
   async function loadProfiles() {
-    const { data } = await supabase
-      .from('scoring_config')
-      .select('profile_name')
-      .order('profile_name')
+    const { data } = await api.scoringConfig.profiles()
     if (data) {
-      const unique = [...new Set(data.map(r => r.profile_name))]
-      setProfiles(unique)
-      if (!profile || !unique.includes(profile)) setProfile(unique[0] || '')
+      setProfiles(data)
+      if (!profile || !data.includes(profile)) setProfile(data[0] || '')
     }
   }
 
@@ -169,11 +165,7 @@ export default function Admin() {
     setLoading(true)
     setError(null)
     setSaved(false)
-    const { data, error } = await supabase
-      .from('scoring_config')
-      .select('*')
-      .eq('profile_name', p)
-      .order('version', { ascending: false })
+    const { data, error } = await api.scoringConfig.list(p)
     if (error) { setError(error.message); setLoading(false); return }
     const activeRow = data.find(r => r.is_active) || data[0]
     setHistory(data)
@@ -189,7 +181,7 @@ export default function Admin() {
     const name = newProfileName.trim().toLowerCase().replace(/\s+/g, '_')
     if (!name) return
     setCreatingProfile(true)
-    const { error } = await supabase.from('scoring_config').insert({
+    const { error } = await api.scoringConfig.insert({
       profile_name: name, version: 1, is_active: true, ...DEFAULT_CAPS,
     })
     if (error) { setError(error.message); setCreatingProfile(false); return }
@@ -224,15 +216,10 @@ export default function Admin() {
     setError(null)
 
     // Deactivate all versions of this profile
-    await supabase
-      .from('scoring_config')
-      .update({ is_active: false })
-      .eq('profile_name', profile)
+    await api.scoringConfig.deactivateAll(profile)
 
     const nextVersion = (history[0]?.version || 0) + 1
-    const { error } = await supabase
-      .from('scoring_config')
-      .insert({
+    const { error } = await api.scoringConfig.insert({
         profile_name: profile,
         version: nextVersion,
         niche_match_cap: Number(form.niche_match_cap),
@@ -251,6 +238,7 @@ export default function Admin() {
         is_active: true,
       })
 
+
     if (error) { setError(error.message); setSaving(false); return }
     setSaved(true)
     setSaving(false)
@@ -261,15 +249,8 @@ export default function Admin() {
   async function handleRollback(row) {
     if (!window.confirm(`Rollback to version ${row.version}?`)) return
 
-    await supabase
-      .from('scoring_config')
-      .update({ is_active: false })
-      .eq('profile_name', profile)
-
-    await supabase
-      .from('scoring_config')
-      .update({ is_active: true })
-      .eq('id', row.id)
+    await api.scoringConfig.deactivateAll(profile)
+    await api.scoringConfig.activate(row.id)
 
     await loadProfile(profile)
   }
